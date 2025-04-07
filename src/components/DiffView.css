@@ -1,9 +1,246 @@
-.diff-view .diff-add {
-    background-color: #d4f8d4; /* Light green */
-    color: #228b22; /* Dark green */
+.diff-view {
+    margin-top: 2rem;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: left; /* Ensure the entire diff view is left-aligned */
 }
 
-.diff-view .diff-delete {
-    background-color: #f8d4d4; /* Light red */
-    color: #b22222; /* Dark red */
+/* General markdown content styling */
+.markdown-content {
+    line-height: 1.6;
+    font-size: 14px;
+    text-align: left;
+}
+
+.markdown-content * {
+    text-align: left;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.markdown-content h1 { font-size: 2em; }
+.markdown-content h2 { font-size: 1.5em; }
+.markdown-content h3 { font-size: 1.25em; }
+.markdown-content h4 { font-size: 1em; }
+.markdown-content h5 { font-size: 0.875em; }
+.markdown-content h6 { font-size: 0.85em; }
+
+.markdown-content p {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.markdown-content pre {
+    margin: 16px 0;
+    padding: 16px;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #f6f8fa;
+    border-radius: 6px;
+}
+
+.markdown-content code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    background-color: rgba(27, 31, 35, 0.05);
+    border-radius: 6px;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.markdown-content pre code {
+    padding: 0;
+    margin: 0;
+    font-size: 100%;
+    word-break: normal;
+    white-space: pre;
+    background: transparent;
+    border: 0;
+}
+
+/* Diff styling */
+.diff-add {
+    background-color: #e6ffec;
+    border-radius: 2px;
+    padding: 1px 0;
+    position: relative;
+}
+
+.diff-delete {
+    background-color: #ffebe9;
+    border-radius: 2px;
+    padding: 1px 0;
+    position: relative;
+}
+
+/* Special handling for code block diffs */
+.code-diff {
+    display: inline-block;
+    width: 100%;
+    margin: 0 -16px;
+    padding: 0 16px;
+    border-radius: 0;
+}
+
+pre .code-diff {
+    background-color: transparent;
+}
+
+pre .code-diff.diff-add {
+    background-color: rgba(46, 160, 67, 0.15);
+}
+
+pre .code-diff.diff-delete {
+    background-color: rgba(248, 81, 73, 0.15);
+}
+
+/* List styling */
+.markdown-content ul,
+.markdown-content ol {
+    padding-left: 2em;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+/* Blockquote styling */
+.markdown-content blockquote {
+    padding: 0 1em;
+    color: #6a737d;
+    border-left: 0.25em solid #dfe2e5;
+    margin: 0 0 16px 0;
+}
+
+/* Table styling */
+.markdown-content table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    margin: 16px 0;
+    width: 100%;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    padding: 6px 13px;
+    border: 1px solid #dfe2e5;
+}
+
+.markdown-content table tr {
+    background-color: #fff;
+    border-top: 1px solid #c6cbd1;
+}
+
+.markdown-content table tr:nth-child(2n) {
+    background-color: #f6f8fa;
+}
+
+/* Diff container layout */
+.diff-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    text-align: left; /* Ensure the diff container is left-aligned */
+}
+
+.diff-header {
+    display: flex;
+    background-color: #f6f8fa;
+    border-bottom: 1px solid #e1e4e8;
+}
+
+.diff-header-old,
+.diff-header-new {
+    flex: 1;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #586069;
+}
+
+.diff-header-old {
+    border-right: 1px solid #e1e4e8;
+}
+
+.diff-table {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.diff-row {
+    display: flex;
+    width: 100%;
+}
+
+.diff-cell {
+    flex: 1;
+    padding: 16px;
+    overflow-x: auto;
+    min-width: 0;
+}
+
+.diff-cell-old {
+    border-right: 1px solid #e1e4e8;
+    background-color: #fafbfc;
+}
+
+/* Images in markdown */
+.markdown-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 16px 0;
+}
+
+/* Links in markdown */
+.markdown-content a {
+    color: #0366d6;
+    text-decoration: none;
+}
+
+.markdown-content a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .diff-row {
+        flex-direction: column;
+    }
+    
+    .diff-cell-old {
+        border-right: none;
+        border-bottom: 1px solid #e1e4e8;
+    }
+    
+    .diff-header {
+        display: none;
+    }
+    
+    .diff-cell::before {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #586069;
+    }
+    
+    .diff-cell-old::before {
+        content: 'Previous Version';
+    }
+    
+    .diff-cell-new::before {
+        content: 'Current Version';
+    }
 }
