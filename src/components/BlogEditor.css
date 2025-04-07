@@ -1,0 +1,249 @@
+.blog-editor {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.editor-toolbar {
+  margin-bottom: 20px;
+  padding: 10px;
+  border-bottom: 2px solid #eee;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.editor-toolbar button:hover {
+  background: #f0f0f0;
+  border-color: #999;
+}
+
+.editor-toolbar button.is-active {
+  background: #e9ecef;
+  border-color: #666;
+  color: #000;
+}
+
+.blog-editor-content {
+  padding: 20px;
+  min-height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #000;
+}
+
+.blog-editor-content p {
+  margin: 0.5em 0;
+  color: #000;
+}
+
+.blog-editor-content:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.blog-image {
+  max-width: 100%;
+  height: auto;
+  margin: 1em 0;
+}
+
+.blog-link {
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+.blog-editor-content blockquote {
+  border-left: 3px solid #ddd;
+  margin: 1em 0;
+  padding-left: 1em;
+  color: #666;
+}
+
+.blog-editor-content pre {
+  background: #f5f5f5;
+  padding: 1em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.blog-editor-content ul,
+.blog-editor-content ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #666;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.diff-view {
+  margin-top: 20px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.diff-view h3 {
+  margin: 0;
+  padding: 16px;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #ddd;
+  font-size: 16px;
+  color: #24292e;
+}
+
+.diff-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.diff-header {
+  display: flex;
+  background-color: #f6f8fa;
+  border-bottom: 1px solid #ddd;
+}
+
+.diff-header-old,
+.diff-header-new {
+  flex: 1;
+  padding: 8px 16px;
+  font-weight: bold;
+  border-right: 1px solid #ddd;
+}
+
+.diff-header-new {
+  border-right: none;
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.diff-row {
+  display: flex;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.diff-cell {
+  flex: 1;
+  padding: 4px 10px;
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-right: 1px solid #eee;
+  max-width: 50%;
+  overflow-x: auto;
+}
+
+.diff-cell:last-child {
+  border-right: none;
+}
+
+/* GitHub-style diff colors */
+.diff-delete {
+  background-color: #ffeef0;
+}
+
+.diff-add {
+  background-color: #e6ffed;
+}
+
+.diff-unchanged {
+  background-color: #fff;
+}
+
+.diff-empty-line {
+  color: #ccc;
+  user-select: none;
+  height: 1em;
+}
+
+/* Override marked rendering to maintain diff styling */
+.diff-cell p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Word-level highlights for inline changes */
+.diff-word-delete {
+  background-color: #fdb8c0;
+  text-decoration: line-through;
+}
+
+.diff-word-add {
+  background-color: #acf2bd;
+}
+
+.save-button {
+  margin-top: 16px;
+  background-color: #2da44e;
+  color: #ffffff;
+  border: 1px solid rgba(27, 31, 36, 0.15);
+}
+
+.save-button:hover {
+  background-color: #2c974b;
+  border-color: rgba(27, 31, 36, 0.15);
+}
+
+.diff-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.diff-row {
+  display: table-row; /* Use table-row for better alignment */
+  align-items: baseline; /* Align content properly */
+  line-height: normal; /* Reset line spacing to default */
+}
+
+.diff-cell {
+  display: table-cell; /* Use table-cell for proper table layout */
+  padding: 4px 8px; /* Adjust padding for better spacing */
+  white-space: pre; /* Prevent wrapping and splitting of characters */
+  vertical-align: top; /* Align content to the top */
+  border-right: 1px solid #ddd; /* Add a separator between cells */
+}
+
+.diff-cell:last-child {
+  border-right: none; /* Remove separator for the last cell */
+}
+
+.diff-delete {
+  background-color: #ffeef0;
+  color: #cb2431;
+}
+
+.diff-add {
+  background-color: #e6ffed;
+  color: #22863a;
+}
+
+.diff-unchanged {
+  background-color: #f6f8fa;
+  color: #24292e;
+}

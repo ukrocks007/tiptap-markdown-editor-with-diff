@@ -1,0 +1,9 @@
+.diff-view .diff-add {
+    background-color: #d4f8d4; /* Light green */
+    color: #228b22; /* Dark green */
+}
+
+.diff-view .diff-delete {
+    background-color: #f8d4d4; /* Light red */
+    color: #b22222; /* Dark red */
+}
