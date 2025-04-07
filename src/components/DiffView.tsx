@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import DiffMatchPatch from 'diff-match-patch';
 import { marked } from 'marked';
 import diff_match_patch from 'diff-match-patch';
@@ -11,7 +11,6 @@ interface DiffViewProps {
 }
 
 const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, showDiff }) => {
-    const [viewMode, setViewMode] = useState<'side-by-side' | 'inline'>('side-by-side');
     
     if (!showDiff) return null;
 
@@ -108,41 +107,17 @@ const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, s
         );
     };
 
-    const renderInlineView = () => {
-        return (
-            <div className="diff-table inline-view">
-                <div dangerouslySetInnerHTML={createFormattedHTML(diffs, 'inline')} />
-            </div>
-        );
-    };
-
     return (
         <div className="diff-view">
             <div className="diff-controls">
                 <h3>Changes Made:</h3>
-                <div className="view-toggle">
-                    <button 
-                        className={viewMode === 'side-by-side' ? 'active' : ''}
-                        onClick={() => setViewMode('side-by-side')}
-                    >
-                        Side by Side
-                    </button>
-                    <button 
-                        className={viewMode === 'inline' ? 'active' : ''}
-                        onClick={() => setViewMode('inline')}
-                    >
-                        Inline
-                    </button>
-                </div>
             </div>
             <div className="diff-container">
-                {viewMode === 'side-by-side' && (
-                    <div className="diff-header">
-                        <div className="diff-header-old">Previous Version</div>
-                        <div className="diff-header-new">Current Version</div>
-                    </div>
-                )}
-                {viewMode === 'side-by-side' ? renderSideBySideView() : renderInlineView()}
+                <div className="diff-header">
+                    <div className="diff-header-old">Previous Version</div>
+                    <div className="diff-header-new">Current Version</div>
+                </div>
+                {renderSideBySideView()}
             </div>
         </div>
     );
