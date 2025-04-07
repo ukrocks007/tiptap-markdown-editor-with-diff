@@ -43,6 +43,12 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   color: #000;
+  text-align: left;
+  align-items: start;
+}
+
+.blog-editor-content * {
+  text-align: left;
 }
 
 .blog-editor-content p {

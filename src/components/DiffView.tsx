@@ -75,11 +75,11 @@ const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, s
                 </div>
                 <div className="diff-table">
                     <div className="diff-row">
-                        <div className="diff-cell diff-cell-old">
-                            <div ref={oldContentRef} dangerouslySetInnerHTML={{ __html: oldHtmlContent }} />
+                        <div className="diff-cell diff-cell-old" style={{ textAlign: 'left' }}>
+                            <div ref={oldContentRef} style={{ textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: oldHtmlContent }} />
                         </div>
-                        <div className="diff-cell diff-cell-new">
-                            <div ref={newContentRef} dangerouslySetInnerHTML={{ __html: newHtmlContent }} />
+                        <div className="diff-cell diff-cell-new" style={{ textAlign: 'left' }}>
+                            <div ref={newContentRef} style={{ textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: newHtmlContent }} />
                         </div>
                     </div>
                 </div>

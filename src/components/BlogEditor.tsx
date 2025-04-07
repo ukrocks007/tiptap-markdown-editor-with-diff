@@ -7,12 +7,9 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown' // Import Markdown extension
 import { common, createLowlight } from 'lowlight'
 import { useState, useEffect } from 'react'
-import DiffMatchPatch from 'diff-match-patch'
-import { marked } from 'marked' // Import marked for markdown to HTML conversion
 import DiffView from './DiffView'; // Import the DiffView component
 
 const lowlight = createLowlight(common)
-const dmp = new DiffMatchPatch()
 
 import './BlogEditor.css'
 
