@@ -3,13 +3,9 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { Markdown } from 'tiptap-markdown' // Import Markdown extension
-import { common, createLowlight } from 'lowlight'
 import { useState, useEffect } from 'react'
 import DiffView from './DiffView'; // Import the DiffView component
-
-const lowlight = createLowlight(common)
 
 import './BlogEditor.css'
 
@@ -34,9 +30,6 @@ const BlogEditor = () => {
       }),
       Placeholder.configure({
         placeholder: 'Start writing your blog post...',
-      }),
-      CodeBlockLowlight.configure({
-        lowlight,
       }),
       Markdown.configure({ // Add Markdown extension
         html: false, // Disable HTML parsing if you want strict Markdown

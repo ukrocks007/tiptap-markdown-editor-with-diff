@@ -16,52 +16,46 @@ const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, s
     const dmp = new DiffMatchPatch();
 
     useEffect(() => {
-        const applyDiffStyling = () => {
-            if (!oldContentRef.current || !newContentRef.current) return;
+        // Compute diffs directly on markdown content
+        const diffs = dmp.diff_main(lastSavedContent, currentContent);
+        dmp.diff_cleanupSemantic(diffs);
 
-            const oldText = oldContentRef.current.innerText;
-            const newText = newContentRef.current.innerText;
-
-            const diffs = dmp.diff_main(oldText, newText);
-            dmp.diff_cleanupSemantic(diffs);
-
-            const buildHighlightedHTML = (diffs: diff_match_patch.Diff[], isOld: boolean) => {
-                let resultHtml = '';
-                diffs.forEach(diff => {
-                    const [diffType, content] = diff;
-                    let el;
-
-                    if (diffType === -1 && isOld) {
-                        // Deletion in old content
-                        el = document.createElement('span');
-                        el.style.backgroundColor = 'red';
-                        el.innerText = content;
-                        resultHtml += el.outerHTML;
-                    } else if (diffType === 1 && !isOld) {
-                        // Addition in new content
-                        el = document.createElement('span');
-                        el.style.backgroundColor = 'green';
-                        el.innerText = content;
-                        resultHtml += el.outerHTML;
-                    } else if (diffType === 0) {
-                        // No change
-                        resultHtml += content;
-                    }
-                });
-                return resultHtml;
-            };
-
-            oldContentRef.current.innerHTML = buildHighlightedHTML(diffs, true);
-            newContentRef.current.innerHTML = buildHighlightedHTML(diffs, false);
+        // Function to convert diffs to HTML with proper styling
+        const createDiffHTML = (diffs: diff_match_patch.Diff[], isOld: boolean) => {
+            let markdownWithDiff = '';
+            
+            diffs.forEach(([diffType, content]) => {
+                if (diffType === -1 && isOld) {
+                    // Deletion in old version
+                    markdownWithDiff += `<span class="diff-delete">${content}</span>`;
+                } else if (diffType === 1 && !isOld) {
+                    // Addition in new version
+                    markdownWithDiff += `<span class="diff-add">${content}</span>`;
+                } else if (diffType === 0) {
+                    // Content that should be displayed normally
+                    markdownWithDiff += content;
+                }
+            });
+            
+            // Convert markdown with diff markers to HTML
+            return marked(markdownWithDiff, { breaks: true, gfm: true });
         };
 
-        applyDiffStyling();
+        // Apply the HTML with diffs
+        if (oldContentRef.current && newContentRef.current) {
+            const updateContent = async () => {
+                if (oldContentRef.current) {
+                    oldContentRef.current.innerHTML = await createDiffHTML(diffs, true);
+                }
+                if (newContentRef.current) {
+                    newContentRef.current.innerHTML = await createDiffHTML(diffs, false);
+                }
+            };
+            updateContent();
+        }
     }, [currentContent, lastSavedContent, dmp]);
 
     if (!showDiff) return null;
-
-    const oldHtmlContent = marked(lastSavedContent, { breaks: true, gfm: true });
-    const newHtmlContent = marked(currentContent, { breaks: true, gfm: true });
 
     return (
         <div className="diff-view">
@@ -76,14 +70,24 @@ const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, s
                 <div className="diff-table">
                     <div className="diff-row">
                         <div className="diff-cell diff-cell-old" style={{ textAlign: 'left' }}>
-                            <div ref={oldContentRef} style={{ textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: oldHtmlContent }} />
+                            <div ref={oldContentRef} style={{ textAlign: 'left' }} />
                         </div>
                         <div className="diff-cell diff-cell-new" style={{ textAlign: 'left' }}>
-                            <div ref={newContentRef} style={{ textAlign: 'left' }} dangerouslySetInnerHTML={{ __html: newHtmlContent }} />
+                            <div ref={newContentRef} style={{ textAlign: 'left' }} />
                         </div>
                     </div>
                 </div>
             </div>
+            <style>{`
+                .diff-delete {
+                    background-color: #ffcccc;
+                    text-decoration: line-through;
+                }
+                
+                .diff-add {
+                    background-color: #ccffcc;
+                }
+            `}</style>
         </div>
     );
 };
