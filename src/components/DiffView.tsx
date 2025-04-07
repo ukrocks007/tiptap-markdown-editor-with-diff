@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import DiffMatchPatch from 'diff-match-patch';
 import { marked } from 'marked';
 import diff_match_patch from 'diff-match-patch';
-// import './DiffView.css';
 
 interface DiffViewProps {
     currentContent: string;
@@ -11,101 +10,58 @@ interface DiffViewProps {
 }
 
 const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, showDiff }) => {
-    
-    if (!showDiff) return null;
+    const oldContentRef = useRef<HTMLDivElement>(null);
+    const newContentRef = useRef<HTMLDivElement>(null);
 
     const dmp = new DiffMatchPatch();
 
-    const processDiffs = (oldText: string, newText: string): diff_match_patch.Diff[] => {
-        const diffs = dmp.diff_main(oldText, newText);
-        dmp.diff_cleanupSemantic(diffs);
-        return diffs;
-    };
+    useEffect(() => {
+        const applyDiffStyling = () => {
+            if (!oldContentRef.current || !newContentRef.current) return;
 
-    const diffs = processDiffs(lastSavedContent, currentContent);
-    
-    // Process markdown first, then apply diff styling
-    const createFormattedHTML = (diffs: diff_match_patch.Diff[], type: 'old' | 'new' | 'inline') => {
-        // First extract the content based on diff type
-        let contentToRender = '';
-        
-        diffs.forEach(diff => {
-            const [diffType, content] = diff;
-            let cssClass = '';
+            const oldText = oldContentRef.current.innerText;
+            const newText = newContentRef.current.innerText;
 
-            if (diffType === -1 && type === 'old') {
-                cssClass = 'diff-delete';
-            } else if (diffType === 1 && type === 'new') {
-                cssClass = 'diff-add';
-            }
-            
-            if (type === 'old') {
-                // For old view, include unchanged and deletions
-                if (diffType === 0 || diffType === -1) {
-                    contentToRender += cssClass ? `<span class="${cssClass}">${content}</span>` : content;
-                }
-            } else if (type === 'new') {
-                // For new view, include unchanged and additions
-                if (diffType === 0 || diffType === 1) {
-                    contentToRender += cssClass ? `<span class="${cssClass}">${content}</span>` : content;
-                }
-            } else if (type === 'inline') {
-                // For inline view, include everything
-                contentToRender += content;
-            }
-        });
-        
-        // Convert markdown to HTML
-        const htmlContent = marked(contentToRender, { breaks: true, gfm: true });
+            const diffs = dmp.diff_main(oldText, newText);
+            dmp.diff_cleanupSemantic(diffs);
 
-        if (htmlContent instanceof Promise) {
-            console.error("Error: 'marked' returned a Promise. Ensure 'marked' is configured to return a string.");
-            return { __html: '' };
-        }
-        
-        if (type === 'inline') {
-            // Now apply highlighting for inline view
-            let highlightedContent = htmlContent;
-            
-            // Process each diff to add styling
-            diffs.forEach(diff => {
-                const [diffType, content] = diff;
-                if (diffType !== 0) {
-                    const escapedContent = content
-                        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
-                        .replace(/\n/g, '<br>'); // Handle newlines
-                    
-                    const cssClass = diffType === -1 ? 'diff-delete' : 'diff-add';
-                    
-                    // Wrap the content with the appropriate class
-                    highlightedContent = highlightedContent.replace(
-                        new RegExp(`(${escapedContent})`, 'g'),
-                        `<span class="${cssClass}">$1</span>`
-                    );
-                }
-            });
-            
-            return { __html: highlightedContent };
-        } else {
-            // For side-by-side, just return the HTML content
-            return { __html: htmlContent };
-        }
-    };
+            const buildHighlightedHTML = (diffs: diff_match_patch.Diff[], isOld: boolean) => {
+                let resultHtml = '';
+                diffs.forEach(diff => {
+                    const [diffType, content] = diff;
+                    let el;
 
-    const renderSideBySideView = () => {
-        return (
-            <div className="diff-table">
-                <div className="diff-row">
-                    <div className="diff-cell diff-cell-old">
-                        <div dangerouslySetInnerHTML={createFormattedHTML(diffs, 'old')} />
-                    </div>
-                    <div className="diff-cell diff-cell-new">
-                        <div dangerouslySetInnerHTML={createFormattedHTML(diffs, 'new')} />
-                    </div>
-                </div>
-            </div>
-        );
-    };
+                    if (diffType === -1 && isOld) {
+                        // Deletion in old content
+                        el = document.createElement('span');
+                        el.style.backgroundColor = 'red';
+                        el.innerText = content;
+                        resultHtml += el.outerHTML;
+                    } else if (diffType === 1 && !isOld) {
+                        // Addition in new content
+                        el = document.createElement('span');
+                        el.style.backgroundColor = 'green';
+                        el.innerText = content;
+                        resultHtml += el.outerHTML;
+                    } else if (diffType === 0) {
+                        // No change
+                        resultHtml += content;
+                    }
+                });
+                return resultHtml;
+            };
+
+            oldContentRef.current.innerHTML = buildHighlightedHTML(diffs, true);
+            newContentRef.current.innerHTML = buildHighlightedHTML(diffs, false);
+        };
+
+        applyDiffStyling();
+    }, [currentContent, lastSavedContent, dmp]);
+
+    if (!showDiff) return null;
+
+    const oldHtmlContent = marked(lastSavedContent, { breaks: true, gfm: true });
+    const newHtmlContent = marked(currentContent, { breaks: true, gfm: true });
 
     return (
         <div className="diff-view">
@@ -117,7 +73,16 @@ const DiffView: React.FC<DiffViewProps> = ({ currentContent, lastSavedContent, s
                     <div className="diff-header-old">Previous Version</div>
                     <div className="diff-header-new">Current Version</div>
                 </div>
-                {renderSideBySideView()}
+                <div className="diff-table">
+                    <div className="diff-row">
+                        <div className="diff-cell diff-cell-old">
+                            <div ref={oldContentRef} dangerouslySetInnerHTML={{ __html: oldHtmlContent }} />
+                        </div>
+                        <div className="diff-cell diff-cell-new">
+                            <div ref={newContentRef} dangerouslySetInnerHTML={{ __html: newHtmlContent }} />
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
