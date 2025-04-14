@@ -11,7 +11,6 @@ import {
   mergeAttributes,
 } from "@tiptap/core";
 import type { CommandProps, Editor, MarkRange } from "@tiptap/core";
-import type { Transaction } from "@tiptap/pm/state";
 
 const LOG_ENABLED = true;
 
@@ -70,7 +69,7 @@ declare module "@tiptap/core" {
   }
 }
 
-// insert mark
+// Insert mark - defines how insertions are tracked
 export const InsertionMark = Mark.create({
   name: MARK_INSERTION,
   addAttributes() {
@@ -101,7 +100,7 @@ export const InsertionMark = Mark.create({
   },
 });
 
-// delete mark
+// Delete mark - defines how deletions are tracked
 export const DeletionMark = Mark.create({
   name: MARK_DELETION,
   addAttributes() {
@@ -132,50 +131,42 @@ export const DeletionMark = Mark.create({
   },
 });
 
-// save the ime-mode status, when input chinese char, the extension needs to deal the change with a special strategy
-// TODO: Is it necessary to save these two variable into a tiptap instance when someone open two editor
+// IME input handling constants and variables
 const IME_STATUS_NORMAL = 0;
 const IME_STATUS_CONTINUE = 2;
 type IME_STATUS_TYPE = 0 | 1 | 2 | 3;
 let composingStatus: IME_STATUS_TYPE = 0; // 0: normal，1: start with first chat, 2: continue input, 3: finished by confirm or cancel with chars applied
 let isStartChineseInput = false;
 
-// get self extension instance by name
+// Helper to get self extension instance by name
 const getSelfExt = (editor: Editor) =>
   editor.extensionManager.extensions.find(
     (item) => item.type === "extension" && item.name === EXTENSION_NAME
   ) as Extension;
 
-// get the current minute time, avoid two char with different time splitted with too many marks
+// Get the current minute time to avoid splitting marks too frequently
 const getMinuteTime = () =>
   Math.round(new Date().getTime() / 1000 / 60) * 1000 * 60;
 
 /**
- * accept or reject tracked changes for all content or just the selection
+ * Accept or reject tracked changes for all content or just the selection
  * @param opType operation to apply
  * @param param a command props, so we can get the editor, tr prop
  * @returns null
  */
 const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
-  /**
-   * get the range to deal, use selection default
-   */
+  // Get the range to deal with, use selection by default
   const from = param.editor.state.selection.from;
   const to = param.editor.state.selection.to;
-  /**
-   * find all the mark ranges to deal and remove mark or remove content according by opType
-   * if got accept all or reject all, just set 'from' to 0 and 'to' to content size
-   * if got just a part range,
-   */
+
   let markRanges: Array<MarkRange> = [];
-  /**
-   * deal a part and no selection contents, need to recognize the left mark near by cursor
-   */
+
+  // Deal with different scenarios based on operation type and selection
   if (
     (opType === TRACK_COMMAND_ACCEPT || opType === TRACK_COMMAND_REJECT) &&
     from === to
   ) {
-    // detect left mark
+    // Detect left mark when cursor is at a point (no selection)
     const isInsertBeforeCursor = isMarkActive(
       param.editor.state,
       MARK_INSERTION
@@ -207,48 +198,42 @@ const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
     opType === TRACK_COMMAND_ACCEPT_ALL ||
     opType === TRACK_COMMAND_REJECT_ALL
   ) {
-    // all editor content
+    // Process all content in the document
     markRanges = getMarksBetween(
       0,
       param.editor.state.doc.content.size,
       param.editor.state.doc
     );
-    // change the opType to normal
+    // Convert the operation type to the non-all variant
     opType =
       opType === TRACK_COMMAND_ACCEPT_ALL
         ? TRACK_COMMAND_ACCEPT
         : TRACK_COMMAND_REJECT;
   } else {
-    // just the selection
+    // Process just the selected range
     markRanges = getMarksBetween(from, to, param.editor.state.doc);
   }
-  // just deal the track change nodes
+
+  // Filter to only include track change marks
   markRanges = markRanges.filter(
     (markRange) =>
       markRange.mark.type.name === MARK_DELETION ||
       markRange.mark.type.name === MARK_INSERTION
   );
+
   if (!markRanges.length) {
     return false;
   }
 
   const currentTr = param.tr;
-  /**
-   * mark type and opType compose:
-   * 1. accept with insert mark: remove insert mark
-   * 2. accept with delete mark: remove content
-   * 3. reject with insert mark: remove content
-   * 4. reject with delete mark: remove delete mark
-   * so
-   * 1 and 4 need to remove mark
-   * 2 and 3 need to remove content
-   */
-  // record offset when delete some content to find the correct pos for next range
+
+  // Record offset when deleting content to maintain correct positions
   let offset = 0;
   const removeInsertMark =
     param.editor.state.doc.type.schema.marks.insertion.create();
   const removeDeleteMark =
     param.editor.state.doc.type.schema.marks.deletion.create();
+
   markRanges.forEach((markRange) => {
     const isAcceptInsert =
       opType === TRACK_COMMAND_ACCEPT &&
@@ -256,8 +241,9 @@ const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
     const isRejectDelete =
       opType === TRACK_COMMAND_REJECT &&
       markRange.mark.type.name === MARK_DELETION;
+
     if (isAcceptInsert || isRejectDelete) {
-      // 1 and 4: remove mark
+      // Remove mark for accepted insertions or rejected deletions
       currentTr.removeMark(
         markRange.from - offset,
         markRange.to - offset,
@@ -269,21 +255,22 @@ const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
         removeDeleteMark.type
       );
     } else {
-      // 2 and 3 remove content
+      // Remove content for accepted deletions or rejected insertions
       currentTr.deleteRange(markRange.from - offset, markRange.to - offset);
-      // change the offset
+      // Update offset for subsequent operations
       offset += markRange.to - markRange.from;
     }
   });
+
   if (currentTr.steps.length) {
-    // set a custom meta to tail Our TrackChangeExtension to ignore this change
-    // TODO: is there any official field to do this?
+    // Set metadata to indicate this is a manual track change operation
     currentTr.setMeta("trackManualChanged", true);
-    // apply to current editor state and get a new state
+
+    // Apply transaction and update editor state
     const newState = param.editor.state.apply(currentTr);
-    // update the new state to editor to render new content
     param.editor.view.updateState(newState);
   }
+
   return false;
 };
 
@@ -294,14 +281,17 @@ export const TrackChangeExtension = Extension.create<{
   dataOpUserNickname?: string;
 }>({
   name: EXTENSION_NAME,
+
   onCreate() {
     if (this.options.onStatusChange) {
       this.options.onStatusChange(this.options.enabled);
     }
   },
+
   addExtensions() {
     return [InsertionMark, DeletionMark];
   },
+
   addCommands: () => {
     return {
       setTrackChangeStatus: (enabled: boolean) => (param: CommandProps) => {
@@ -312,6 +302,7 @@ export const TrackChangeExtension = Extension.create<{
         }
         return false;
       },
+
       toggleTrackChangeStatus: () => (param: CommandProps) => {
         const thisExtension = getSelfExt(param.editor);
         thisExtension.options.enabled = !thisExtension.options.enabled;
@@ -320,26 +311,32 @@ export const TrackChangeExtension = Extension.create<{
         }
         return false;
       },
+
       getTrackChangeStatus: () => (param: CommandProps) => {
         const thisExtension = getSelfExt(param.editor);
         return thisExtension.options.enabled;
       },
+
       acceptChange: () => (param: CommandProps) => {
         changeTrack("accept", param);
         return false;
       },
+
       acceptAllChanges: () => (param: CommandProps) => {
         changeTrack("accept-all", param);
         return false;
       },
+
       rejectChange: () => (param: CommandProps) => {
         changeTrack("reject", param);
         return false;
       },
+
       rejectAllChanges: () => (param: CommandProps) => {
         changeTrack("reject-all", param);
         return false;
       },
+
       updateOpUserOption:
         (opUserId: string, opUserNickname: string) => (param: CommandProps) => {
           const thisExtension = getSelfExt(param.editor);
@@ -351,7 +348,7 @@ export const TrackChangeExtension = Extension.create<{
   },
   // @ts-ignore
   onSelectionUpdate(p) {
-    // log the status for debug
+    // Log selection status for debugging
     LOG_ENABLED &&
       console.log(
         "selection and input status",
@@ -360,10 +357,12 @@ export const TrackChangeExtension = Extension.create<{
         p.editor.view.composing
       );
   },
-  // @ts-ignore
+
   addProseMirrorPlugins() {
+    // Create decorations for track change UI elements
     const createChangeDecorations = (doc: any, marks: MarkRange[]) => {
       const decos: any[] = [];
+
       marks.forEach((markRange) => {
         const isInsertMark = markRange.mark.type.name === MARK_INSERTION;
         const isDeleteMark = markRange.mark.type.name === MARK_DELETION;
@@ -377,7 +376,10 @@ export const TrackChangeExtension = Extension.create<{
           acceptButton.className = "track-change-action-button accept";
           acceptButton.setAttribute("title", "Accept change");
           acceptButton.setAttribute("aria-label", "Accept change");
-          acceptButton.setAttribute("data-mark-range", JSON.stringify(markRange));
+          acceptButton.setAttribute(
+            "data-mark-range",
+            JSON.stringify(markRange)
+          );
           acceptButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><polyline points="20 6 9 17 4 12"/></svg>`;
           actionButtons.appendChild(acceptButton);
 
@@ -386,24 +388,25 @@ export const TrackChangeExtension = Extension.create<{
           rejectButton.className = "track-change-action-button reject";
           rejectButton.setAttribute("title", "Reject change");
           rejectButton.setAttribute("aria-label", "Reject change");
-          rejectButton.setAttribute("data-mark-range", JSON.stringify(markRange));
+          rejectButton.setAttribute(
+            "data-mark-range",
+            JSON.stringify(markRange)
+          );
           rejectButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
           actionButtons.appendChild(rejectButton);
 
-          // Add hover logic directly to the `insert` and `delete` tags
+          // Add hover logic directly to the tag
           const tagName = isInsertMark ? "insert" : "delete";
           const tagElement = document.createElement(tagName);
 
-          // Append the buttons to the tag
+          // Append buttons to the tag
           tagElement.appendChild(actionButtons);
 
           // Add hover logic
           tagElement.addEventListener("mouseenter", () => {
-            debugger;
             actionButtons.classList.add("show");
           });
           tagElement.addEventListener("mouseleave", () => {
-            debugger;
             actionButtons.classList.remove("show");
           });
 
@@ -411,8 +414,12 @@ export const TrackChangeExtension = Extension.create<{
             side: 1,
             key: `change-actions-${markRange.from}-${markRange.to}`,
             stopEvent: (event) => {
-              // Stop the event from propagating if it's a button click
-              if ((event.target as HTMLElement)?.closest(".track-change-action-button")) {
+              // Stop event propagation for button clicks
+              if (
+                (event.target as HTMLElement)?.closest(
+                  ".track-change-action-button"
+                )
+              ) {
                 return true;
               }
               return false;
@@ -425,6 +432,7 @@ export const TrackChangeExtension = Extension.create<{
       return DecorationSet.create(doc, decos);
     };
 
+    // Plugin for rendering decorations
     const decorationPlugin = new Plugin({
       key: new PluginKey("track-change-decorations"),
       state: {
@@ -447,158 +455,128 @@ export const TrackChangeExtension = Extension.create<{
       },
     });
 
-    return [
-      decorationPlugin,
-      new Plugin({
-        key: new PluginKey<any>("composing-check"),
-        props: {
-          handleDOMEvents: {
-            compositionstart: (_event) => {
-              LOG_ENABLED && console.log("start chinese input");
-              isStartChineseInput = true;
-            },
-            compositionupdate: (_event) => {
-              LOG_ENABLED && console.log("chinese input continue");
-              composingStatus = IME_STATUS_CONTINUE;
-            },
+    // Plugin for handling IME input
+    const imePlugin = new Plugin({
+      key: new PluginKey("composing-check"),
+      props: {
+        handleDOMEvents: {
+          compositionstart: (_event) => {
+            LOG_ENABLED && console.log("start chinese input");
+            isStartChineseInput = true;
+            return false;
+          },
+          compositionupdate: (_event) => {
+            LOG_ENABLED && console.log("chinese input continue");
+            composingStatus = IME_STATUS_CONTINUE;
+            return false;
           },
         },
-      }),
-    ];
+      },
+    });
+
+    return [decorationPlugin, imePlugin];
   },
-  // @ts-ignore
-  onTransaction: (props: { editor: Editor; transaction: Transaction }) => {
-    const { transaction, editor } = props;
-    // chinese input status check
+
+  onTransaction: ({ editor, transaction }) => {
+    // Check IME input status
     const isChineseStart =
       isStartChineseInput && composingStatus === IME_STATUS_CONTINUE;
     const isChineseInputting =
       !isStartChineseInput && composingStatus === IME_STATUS_CONTINUE;
-    const isNormalInput = composingStatus === IME_STATUS_NORMAL; // not ime mode
-    composingStatus = IME_STATUS_NORMAL; // reset for next change
+    const isNormalInput = composingStatus === IME_STATUS_NORMAL;
+
+    // Reset for next change
+    composingStatus = IME_STATUS_NORMAL;
     isStartChineseInput = false;
-    /**
-     * normal ime mode start, we can ignore the input and deal change when last confirm
-     * but what if it has a selection before? the selected content will loss for real. so we have to deal with it
-     */
-    // no change, ignore
+
+    // Skip if no document changes
     if (!transaction.docChanged) {
       return;
     }
-    // check if it is change by accept or reject
+
+    // Skip if change by accept/reject commands
     if (transaction.getMeta("trackManualChanged")) {
       return;
     }
-    // if this is a redo or undo, ignore it.
+
+    // Skip if undo/redo
     if (transaction.getMeta("history$")) {
       return;
     }
-    // check if it is synced by another client or the server, need to ignore too
+
+    // Skip if synced from another client
     const syncMeta = transaction.getMeta("y-sync$");
     if (syncMeta && syncMeta.isChangeOrigin) {
       LOG_ENABLED && console.log("sync from origin", syncMeta);
       return;
     }
-    // has no real step
+
+    // Skip if no steps
     if (!transaction.steps.length) {
       LOG_ENABLED && console.log("none content change");
       return;
     }
-    // check if this tr was applied to editor: vue2 and vue3 have different result
+
+    // Check if transaction was applied to editor
     const isThisTrApplied = transaction.before !== editor.state.tr.doc;
     const thisExtension = getSelfExt(editor);
     const trackChangeEnabled = thisExtension.options.enabled;
-    LOG_ENABLED &&
-      console.warn(
-        transaction.steps.length,
-        transaction
-      );
-    /**
-     * Two main process
-     *
-     * 1. When Status disabled
-     *  a. the new insert content cannot be wrapped with insert or delete mark (avoid the original auto style by browser)
-     *  b. consider the ime mode
-     *  c. make the cursor pos right
-     *  d. can "remove the auto-used style" and "user edit" op be a single operation to history?
-     *
-     * 2. When Status Enabled(with more complex process)
-     *  a. mark the new content with insert
-     *  b. remove auto-used delete mark for new content
-     *  c. readd the deleted normal content and mark as delete
-     *  d. readd the deleted "delete char"
-     *  e. if "insert char" be deleted, just let it go
-     *  f. correct the final cursor position, too many cases to consider
-     *  h. careful with ime mode
-     *  i. ignore history updates
-     */
-    // copy the step, avoid the change the origin step info
+
+    LOG_ENABLED && console.warn(transaction.steps.length, transaction);
+
+    // Copy steps to avoid modifying original
     const allSteps = transaction.steps.map((step) =>
       Step.fromJSON(editor.state.doc.type.schema, step.toJSON())
     );
+
     LOG_ENABLED && console.log("allSteps", allSteps);
-    // latest cursor pos
-    // TODO: recognize selection direction and backspace/delete to get calculate new cursor pos
+
+    // Get current cursor position
     const currentNewPos = transaction.selection.from;
     LOG_ENABLED && console.log("currentNewPos", currentNewPos);
 
-    // cursor offset, try to reset the pos in the end process
+    // Calculate cursor offset
     let posOffset = 0;
     let hasAddAndDelete = false;
+
+    // Analyze steps to determine cursor positioning
     allSteps.forEach((step: Step, _index: number, _arr: Step[]) => {
       if (step instanceof ReplaceStep) {
-        // loss chars
         let delCount = 0;
         if (step.from !== step.to) {
-          /**
-           * means some content will be removed, but in this extension, we will reAdd it back
-           * note: if the old content is already 'insert', just let it go.
-           */
           const slice = transaction.docs[_index].slice(step.from, step.to);
           slice.content.forEach((node) => {
             const isInsertNode = node.marks.find(
               (m) => m.type.name === MARK_INSERTION
             );
             if (!isInsertNode) {
-              // sum the none-insert mark size
-              // TODO: nodeSize or size filed? what if the node is a image or some other custom node
               delCount += node.nodeSize;
             }
           });
         }
         posOffset += delCount;
-        // added chars in this step
+
+        // Check if content was both added and deleted
         const newCount = step.slice ? step.slice.size : 0;
         if (newCount && delCount) {
-          // if only add or del, don't need to change selection, it's already right
           hasAddAndDelete = true;
         }
       }
     });
+
+    // Adjust cursor position logic based on input type
     if (isNormalInput) {
-      // none ime mode
       if (!hasAddAndDelete) {
-        // just delete or add, no need to correct cursor
         posOffset = 0;
       }
     } else if (isChineseStart) {
-      // first chinese char
-      if (hasAddAndDelete) {
-        /**
-         * input chinese char when a selection content exist
-         * need the readd the selected chars, so we need update the cursor
-         * but we cannot change the cursor in "inputting time", ,,,,need some more test
-         */
-        // posOffset -= 1
-      } else {
-        // just new content, ime software will make it right
+      if (!hasAddAndDelete) {
         posOffset = 0;
       }
     } else if (isChineseInputting) {
-      // chinese input, at least two chars, no need to update cursor
       posOffset = 0;
     }
-    // TODO: if there has multiple replace steps,we can ignore the cursor
+
     LOG_ENABLED &&
       console.table({
         hasAddAndDelete,
@@ -608,16 +586,16 @@ export const TrackChangeExtension = Extension.create<{
         posOffset,
       });
 
-    // get the correct tr to manipulate
-    // tr had been applied in vue2, and not in vue3
-    // so we get a new tr in vue2 by "editor.state.tr"
-    // TODO: if we use vue2, the cursor correction need to be more tested
+    // Get transaction to manipulate
     const newChangeTr = isThisTrApplied ? editor.state.tr : transaction;
 
+    // Process each step
     let reAddOffset = 0;
     allSteps.forEach((step: Step, index: number) => {
       if (step instanceof ReplaceStep) {
         const invertedStep = step.invert(transaction.docs[index]);
+
+        // Handle new content
         if (step.slice.size) {
           const insertionMark =
             editor.state.doc.type.schema.marks.insertion.create({
@@ -627,48 +605,56 @@ export const TrackChangeExtension = Extension.create<{
             });
           const deletionMark =
             editor.state.doc.type.schema.marks.deletion.create();
+
           const from = step.from + reAddOffset;
           const to = step.from + reAddOffset + step.slice.size;
+
           if (trackChangeEnabled) {
-            // add insert mark to new content
+            // Add insertion mark to new content
             newChangeTr.addMark(from, to, insertionMark);
           } else {
-            // if disabled this extension, remove auto-used track mark for new content
+            // Remove auto-applied track marks if extension disabled
             newChangeTr.removeMark(from, to, insertionMark.type);
           }
-          // remove auto-used delete mark for new content anyway
+
+          // Always remove auto-applied deletion marks
           newChangeTr.removeMark(from, to, deletionMark.type);
         }
+
+        // Handle deleted content
         if (step.from !== step.to && trackChangeEnabled) {
           LOG_ENABLED && console.log("find content to readd", step);
-          // get the reverted step, so we can know what content is deleted in this step and readd then
-          // make sure use related doc in transaction. every step has the new doc with same order
-          // TODO: is there difference between vue2 and vue3
+
+          // Collect content to skip re-adding (content with insertion mark)
           const skipSteps: Array<ReplaceStep> = [];
-          // collect the content we need to ignore readd, because some content is insert mark before, there data need to be allowed delete
+
           LOG_ENABLED && console.log("invertedStep", invertedStep);
+
+          // Create step to re-add deleted content
           const reAddStep = new ReplaceStep(
             invertedStep.from + reAddOffset,
             invertedStep.from + reAddOffset,
             invertedStep.slice,
-            // @ts-ignore: what is internal means
+            // @ts-ignore
             invertedStep.structure
           );
-          // make a empty step to replace the original "INSERT" mark, because these content don't need to readd
-          // the slice content maybe a TextNode or other node with any child content
-          // so we need to travel all the content to find the "INSERT" mark
-          let addedEmptyOffset = 0; // when empty step is added, record the offset to correct the next empty step, because the content will b shorter than the current when create next empty step
+
+          // Track offset for empty steps
+          let addedEmptyOffset = 0;
+
+          // Traverse content to find nodes with insertion marks
           const travelContent = (content: Fragment, parentOffset: number) => {
             content.forEach((node, offset) => {
               const start = parentOffset + offset;
               const end = start + node.nodeSize;
+
               if (node.content && node.content.size) {
-                // this node has child content, need to travel
+                // Node has children - traverse recursively
                 travelContent(node.content, start);
               } else {
-                // this node is a text node, or a node without child content
+                // Check if node has insertion mark
                 if (node.marks.find((m) => m.type.name === MARK_INSERTION)) {
-                  // construct a empty step, apply this after readd action applied
+                  // Create empty step to replace content with insertion mark
                   skipSteps.push(
                     new ReplaceStep(
                       start - addedEmptyOffset,
@@ -682,13 +668,17 @@ export const TrackChangeExtension = Extension.create<{
               }
             });
           };
+
           travelContent(invertedStep.slice.content, invertedStep.from);
           reAddOffset += invertedStep.slice.size;
-          // apply readd step action
+
+          // Apply re-add step
           newChangeTr.step(reAddStep);
+
           const { from } = reAddStep;
           const to = from + reAddStep.slice.size;
-          // add delete mark for readd content
+
+          // Add deletion mark to re-added content
           newChangeTr.addMark(
             from,
             to,
@@ -698,20 +688,24 @@ export const TrackChangeExtension = Extension.create<{
               "data-op-date": getMinuteTime(),
             })
           );
+
+          // Apply skip steps
           skipSteps.forEach((step) => {
-            // delete the content if it is already with insert mark
             newChangeTr.step(step);
           });
         }
+
+        // Apply changes
         const newState = editor.state.apply(newChangeTr);
         editor.view.updateState(newState);
       }
     });
 
-    // calculate new cursor postion
+    // Update cursor position
     const finalNewPos = trackChangeEnabled
       ? currentNewPos + posOffset
       : currentNewPos;
+
     if (trackChangeEnabled) {
       const trWithChange = editor.view.state.tr;
       trWithChange.setSelection(
@@ -721,14 +715,13 @@ export const TrackChangeExtension = Extension.create<{
       LOG_ENABLED && console.log("update cursor", finalNewPos);
       editor.view.updateState(newStateWithNewSelection);
     }
+
+    // Handle special case for Chinese input
     if (isChineseStart && hasAddAndDelete && trackChangeEnabled) {
-      // if the first chinese input and have some content selected
-      // just make it stop by blur action
-      // delete the selection and use just need paste the new content again
+      // Delete selection and temporarily blur to handle IME issue
       editor.commands.deleteSelection();
       editor.commands.blur();
       setTimeout(() => {
-        // focus again
         editor.commands.focus();
       }, 100);
     }
