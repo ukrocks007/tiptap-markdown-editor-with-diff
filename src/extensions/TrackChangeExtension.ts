@@ -135,9 +135,7 @@ export const DeletionMark = Mark.create({
 // save the ime-mode status, when input chinese char, the extension needs to deal the change with a special strategy
 // TODO: Is it necessary to save these two variable into a tiptap instance when someone open two editor
 const IME_STATUS_NORMAL = 0;
-const IME_STATUS_START = 1;
 const IME_STATUS_CONTINUE = 2;
-const IME_STATUS_FINISHED = 3;
 type IME_STATUS_TYPE = 0 | 1 | 2 | 3;
 let composingStatus: IME_STATUS_TYPE = 0; // 0: normal，1: start with first chat, 2: continue input, 3: finished by confirm or cancel with chars applied
 let isStartChineseInput = false;
