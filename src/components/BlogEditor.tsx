@@ -6,6 +6,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown' // Import Markdown extension
 import { useState, useEffect } from 'react'
 import DiffView from './DiffView'; // Import the DiffView component
+import TrackChangeExtension from '../extensions/TrackChangeExtension' // Import our TrackChangeExtension
+import TrackChangesView from './TrackChangesView' // Import the TrackChangesView component
 
 import './BlogEditor.css'
 
@@ -13,6 +15,7 @@ const BlogEditor = () => {
   const [versions, setVersions] = useState<string[]>([])
   const [showDiff, setShowDiff] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [trackingEnabled, setTrackingEnabled] = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -33,6 +36,12 @@ const BlogEditor = () => {
       }),
       Markdown.configure({ // Add Markdown extension
         html: false, // Disable HTML parsing if you want strict Markdown
+      }),
+      TrackChangeExtension.configure({
+        enabled: trackingEnabled,
+        onStatusChange: (status: boolean) => setTrackingEnabled(status),
+        dataOpUserId: 'current-user', // This could be fetched from your auth system
+        dataOpUserNickname: 'Current User', // This could be fetched from your auth system
       }),
     ],
     editorProps: {
@@ -140,6 +149,11 @@ const BlogEditor = () => {
         currentContent={versions[versions.length - 1] || ''}
         lastSavedContent={versions[versions.length - 2] || ''}
         showDiff={showDiff}
+      />
+      <TrackChangesView
+        editor={editor}
+        trackingEnabled={trackingEnabled}
+        setTrackingEnabled={setTrackingEnabled}
       />
     </div>
   )

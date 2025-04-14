@@ -1,0 +1,187 @@
+.track-changes-view {
+    margin-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+}
+
+.track-changes-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.track-changes-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.track-changes-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.track-changes-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.change-button {
+    padding: 0.4rem 0.7rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: #f5f5f5;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.change-button:hover {
+    background-color: #e0e0e0;
+}
+
+.change-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.accept-change,
+.accept-all {
+    color: #4caf50;
+    border-color: #4caf50;
+}
+
+.accept-change:hover,
+.accept-all:hover {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.reject-change,
+.reject-all {
+    color: #f44336;
+    border-color: #f44336;
+}
+
+.reject-change:hover,
+.reject-all:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* Styling for tracked changes in the editor */
+:root {
+    --insertion-color: rgba(0, 200, 0, 0.2);
+    --deletion-color: rgba(255, 0, 0, 0.2);
+}
+
+.insertion-container,
+.deletion-container {
+    position: relative;
+    display: inline-block;
+    margin-right: 24px; /* Space for buttons */
+}
+
+.insertion-container:hover,
+.deletion-container:hover {
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+}
+
+.track-change-action-buttons {
+    position: absolute;
+    display: flex;
+    visibility: hidden;
+    opacity: 0;
+    right: -28px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px;
+    gap: 4px;
+    z-index: 1000;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.track-change-action-button {
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4caf50;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border:#000000 1px solid;
+}
+
+.track-change-action-button:hover {
+    transform: scale(1.1);
+}
+
+.track-change-action-button.accept {
+    color: #4caf50;
+}
+
+.track-change-action-button.accept:hover {
+    background-color: #4caf50;
+    color: white;
+}
+
+.track-change-action-button.reject {
+    color: #f44336;
+}
+
+.track-change-action-button.reject:hover {
+    background-color: #f44336;
+    color: white;
+}
+
+/* Ensure buttons are visible on hover */
+.insertion-container:hover .track-change-action-buttons,
+.deletion-container:hover .track-change-action-buttons {
+    visibility: visible;
+    opacity: 1;
+    z-index: 1000; /* Ensure buttons are above other elements */
+}
+
+.track-change-action-buttons.show {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Improved tracked changes styling */
+insert {
+    background-color: var(--insertion-color);
+    text-decoration: none;
+    padding: 0 2px;
+    border-radius: 2px;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+insert:hover {
+    background-color: rgba(0, 200, 0, 0.3);
+}
+
+delete {
+    background-color: var(--deletion-color);
+    text-decoration: line-through;
+    padding: 0 2px;
+    border-radius: 2px;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+delete:hover {
+    background-color: rgba(255, 0, 0, 0.3);
+}
