@@ -30,36 +30,69 @@ export type TRACK_COMMAND_TYPE =
   | "reject"
   | "reject-all";
 
+// Define the extension options type
+export interface TrackChangeOptions {
+  /**
+   * Enable/disable track changes
+   */
+  enabled: boolean;
+  /**
+   * Callback for when the track changes status changes
+   */
+  onStatusChange?: (enabled: boolean) => void;
+  /**
+   * User ID for tracking changes
+   */
+  dataOpUserId?: string;
+  /**
+   * User nickname for tracking changes
+   */
+  dataOpUserNickname?: string;
+}
+
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     trackchange: {
       /**
-       * change track change extension enabled status
-       * we don't use a external function instead，so we can use a editor.command anywhere without another variable
-       * @param enabled
-       * @returns
+       * Set the track change extension enabled status
+       * @param enabled Whether track changes should be enabled
        */
       setTrackChangeStatus: (enabled: boolean) => ReturnType;
-      getTrackChangeStatus: () => ReturnType;
-      toggleTrackChangeStatus: () => ReturnType;
+
       /**
-       * accept one change: auto recognize the selection or left near by cursor pos
+       * Get the current track change status
+       */
+      getTrackChangeStatus: () => ReturnType;
+
+      /**
+       * Toggle the track change extension enabled status
+       */
+      toggleTrackChangeStatus: () => ReturnType;
+
+      /**
+       * Accept one change at the current selection or cursor position
        */
       acceptChange: () => ReturnType;
+
       /**
-       * accept all changes: mark insertion as normal, and remove all the deletion nodes
+       * Accept all changes throughout the document
        */
       acceptAllChanges: () => ReturnType;
+
       /**
-       * same to accept
+       * Reject one change at the current selection or cursor position
        */
       rejectChange: () => ReturnType;
+
       /**
-       * same to acceptAll but: remove deletion mark and remove all insertion nodes
+       * Reject all changes throughout the document
        */
       rejectAllChanges: () => ReturnType;
+
       /**
-       *
+       * Update user information for tracking changes
+       * @param opUserId User ID for tracking changes
+       * @param opUserNickname User nickname for tracking changes
        */
       updateOpUserOption: (
         opUserId: string,
@@ -69,28 +102,40 @@ declare module "@tiptap/core" {
   }
 }
 
-// Insert mark - defines how insertions are tracked
+/**
+ * Mark for tracking inserted content
+ */
 export const InsertionMark = Mark.create({
   name: MARK_INSERTION,
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+
   addAttributes() {
     return {
       "data-op-user-id": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
       "data-op-user-nickname": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
       "data-op-date": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
     };
   },
+
   parseHTML() {
-    return [{ tag: "insert" }];
+    return [
+      {
+        tag: "insert",
+      },
+    ];
   },
+
   renderHTML({ HTMLAttributes }) {
     return [
       "insert",
@@ -98,36 +143,58 @@ export const InsertionMark = Mark.create({
       0,
     ];
   },
+
+  // Used to convert the mark to plain text when copying
+  renderText({ node }: { node: any }) {
+    return node.text || "";
+  },
 });
 
-// Delete mark - defines how deletions are tracked
+/**
+ * Mark for tracking deleted content
+ */
 export const DeletionMark = Mark.create({
   name: MARK_DELETION,
+
+  addOptions() {
+    return {
+      HTMLAttributes: {},
+    };
+  },
+
   addAttributes() {
     return {
       "data-op-user-id": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
       "data-op-user-nickname": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
       "data-op-date": {
-        type: "string",
-        default: () => "",
+        default: null,
       },
     };
   },
+
   parseHTML() {
-    return [{ tag: "delete" }];
+    return [
+      {
+        tag: "delete",
+      },
+    ];
   },
+
   renderHTML({ HTMLAttributes }) {
     return [
       "delete",
       mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
       0,
     ];
+  },
+
+  // Used to convert the mark to plain text when copying
+  renderText({ node }: { node: any }) {
+    return node.text || "";
   },
 });
 
@@ -152,9 +219,12 @@ const getMinuteTime = () =>
  * Accept or reject tracked changes for all content or just the selection
  * @param opType operation to apply
  * @param param a command props, so we can get the editor, tr prop
- * @returns null
+ * @returns boolean indicating command completion
  */
-const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
+const changeTrack = (
+  opType: TRACK_COMMAND_TYPE,
+  param: CommandProps
+): boolean => {
   // Get the range to deal with, use selection by default
   const from = param.editor.state.selection.from;
   const to = param.editor.state.selection.to;
@@ -274,13 +344,20 @@ const changeTrack = (opType: TRACK_COMMAND_TYPE, param: CommandProps) => {
   return false;
 };
 
-export const TrackChangeExtension = Extension.create<{
-  enabled: boolean;
-  onStatusChange?: Function;
-  dataOpUserId?: string;
-  dataOpUserNickname?: string;
-}>({
+/**
+ * Extension for tracking changes in TipTap documents
+ */
+export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
   name: EXTENSION_NAME,
+
+  addOptions() {
+    return {
+      enabled: false,
+      onStatusChange: undefined,
+      dataOpUserId: "",
+      dataOpUserNickname: "",
+    };
+  },
 
   onCreate() {
     if (this.options.onStatusChange) {
@@ -292,7 +369,7 @@ export const TrackChangeExtension = Extension.create<{
     return [InsertionMark, DeletionMark];
   },
 
-  addCommands: () => {
+  addCommands() {
     return {
       setTrackChangeStatus: (enabled: boolean) => (param: CommandProps) => {
         const thisExtension = getSelfExt(param.editor);
@@ -347,14 +424,14 @@ export const TrackChangeExtension = Extension.create<{
     };
   },
   // @ts-ignore
-  onSelectionUpdate(p) {
+  onSelectionUpdate({ transaction, editor }) {
     // Log selection status for debugging
     LOG_ENABLED &&
       console.log(
         "selection and input status",
-        p.transaction.selection.from,
-        p.transaction.selection.to,
-        p.editor.view.composing
+        transaction.selection.from,
+        transaction.selection.to,
+        editor.view.composing
       );
   },
 
