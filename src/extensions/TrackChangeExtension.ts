@@ -478,6 +478,7 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
           // Add hover logic directly to the tag
           const tagName = isInsertMark ? "insert" : "delete";
           const tagElement = document.createElement(tagName);
+          tagElement.id = "track-change-button-" + markRange.from + "-" + markRange.to;
 
           // Append buttons to the tag
           tagElement.appendChild(actionButtons);
@@ -505,6 +506,18 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
               return false;
             },
           });
+
+          // const inlineDeco = Decoration.inline(markRange.from, markRange.to, {
+          //   class: "track-change-action-inline",
+          //   nodeName: "span",
+          //   style: "position: relative; display: inline-block;",
+          // }, {
+          //   inclusiveEnd: true,
+          //   inclusiveStart: true,
+          //   key: `change-actions-inline-${markRange.from}-${markRange.to}`,
+          // });
+
+          // decos.push(inlineDeco);
           decos.push(deco);
         }
       });
@@ -737,9 +750,29 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
     });
 
     // Update cursor position
-    const finalNewPos = trackChangeEnabled
+    let finalNewPos = trackChangeEnabled
       ? currentNewPos + posOffset
       : currentNewPos;
+
+    // --- Fix: Move cursor before deletion mark after backspace ---
+    // Detect if this was a backward deletion (backspace)
+    const sel = transaction.selection;
+    const isBackwardDelete =
+      trackChangeEnabled &&
+      sel instanceof TextSelection &&
+      sel.empty &&
+      sel.from === sel.to;
+    if (isBackwardDelete && allSteps.length > 0) {
+      // Find the last ReplaceStep that deleted content
+      const lastDelStep = allSteps.reverse().find(
+        (step: Step) => step instanceof ReplaceStep && (step as ReplaceStep).from !== (step as ReplaceStep).to
+      ) as ReplaceStep | undefined;
+      if (lastDelStep) {
+        // Move cursor to just before the new deletion mark
+        finalNewPos = lastDelStep.from;
+      }
+    }
+    // --- End fix ---
 
     if (trackChangeEnabled) {
       const trWithChange = editor.view.state.tr;
