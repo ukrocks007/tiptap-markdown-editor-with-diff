@@ -209,13 +209,6 @@ export const DeletionMark = Mark.create({
   },
 });
 
-// IME input handling constants and variables
-const IME_STATUS_NORMAL = 0;
-const IME_STATUS_CONTINUE = 2;
-type IME_STATUS_TYPE = 0 | 1 | 2 | 3;
-let composingStatus: IME_STATUS_TYPE = 0; // 0: normal，1: start with first chat, 2: continue input, 3: finished by confirm or cancel with chars applied
-let isStartChineseInput = false;
-
 // Helper to get self extension instance by name
 const getSelfExt = (editor: Editor) =>
   editor.extensionManager.extensions.find(
@@ -519,39 +512,33 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       return DecorationSet.create(doc, decos);
     };
 
-    // Plugin for handling IME input
-    const imePlugin = new Plugin({
-      key: new PluginKey("composing-check"),
+     // Plugin for rendering decorations
+     const decorationPlugin = new Plugin({
+      key: new PluginKey("track-change-decorations"),
+      state: {
+        init(_, { doc }) {
+          const marks = getMarksBetween(0, doc.content.size, doc);
+          return createChangeDecorations(doc, marks);
+        },
+        apply(tr, old) {
+          if (tr.docChanged || tr.getMeta("track-change-update")) {
+            const marks = getMarksBetween(0, tr.doc.content.size, tr.doc);
+            return createChangeDecorations(tr.doc, marks);
+          }
+          return old;
+        },
+      },
       props: {
-        handleDOMEvents: {
-          compositionstart: (_event) => {
-            LOG_ENABLED && console.log("start chinese input");
-            isStartChineseInput = true;
-            return false;
-          },
-          compositionupdate: (_event) => {
-            LOG_ENABLED && console.log("chinese input continue");
-            composingStatus = IME_STATUS_CONTINUE;
-            return false;
-          },
+        decorations(state) {
+          return this.getState(state);
         },
       },
     });
 
-    return [imePlugin];
+    return [decorationPlugin];
   },
 
   onTransaction: ({ editor, transaction }) => {
-    // Check IME input status
-    const isChineseStart =
-      isStartChineseInput && composingStatus === IME_STATUS_CONTINUE;
-    const isChineseInputting =
-      !isStartChineseInput && composingStatus === IME_STATUS_CONTINUE;
-    const isNormalInput = composingStatus === IME_STATUS_NORMAL;
-
-    // Reset for next change
-    composingStatus = IME_STATUS_NORMAL;
-    isStartChineseInput = false;
 
     // Skip if no document changes
     if (!transaction.docChanged) {
@@ -628,25 +615,9 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       }
     });
 
-    // Adjust cursor position logic based on input type
-    if (isNormalInput) {
-      if (!hasAddAndDelete) {
-        posOffset = 0;
-      }
-    } else if (isChineseStart) {
-      if (!hasAddAndDelete) {
-        posOffset = 0;
-      }
-    } else if (isChineseInputting) {
-      posOffset = 0;
-    }
-
     LOG_ENABLED &&
       console.table({
         hasAddAndDelete,
-        isNormalInput,
-        isChineseStart,
-        isChineseInputting,
         posOffset,
       });
 
@@ -778,16 +749,6 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       const newStateWithNewSelection = editor.view.state.apply(trWithChange);
       LOG_ENABLED && console.log("update cursor", finalNewPos);
       editor.view.updateState(newStateWithNewSelection);
-    }
-
-    // Handle special case for Chinese input
-    if (isChineseStart && hasAddAndDelete && trackChangeEnabled) {
-      // Delete selection and temporarily blur to handle IME issue
-      editor.commands.deleteSelection();
-      editor.commands.blur();
-      setTimeout(() => {
-        editor.commands.focus();
-      }, 100);
     }
   },
 });
