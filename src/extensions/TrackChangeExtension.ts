@@ -11,6 +11,7 @@ import {
   mergeAttributes,
 } from "@tiptap/core";
 import type { CommandProps, Editor, MarkRange } from "@tiptap/core";
+import "./TrackChangeExtension.css";
 
 const LOG_ENABLED = true;
 
@@ -136,12 +137,17 @@ export const InsertionMark = Mark.create({
     ];
   },
 
+  // In InsertionMark and DeletionMark
   renderHTML({ HTMLAttributes }) {
-    return [
-      "insert",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      0,
-    ];
+    // Add a common class plus specific class if needed
+    const finalAttrs = mergeAttributes(
+      this.options.HTMLAttributes,
+      HTMLAttributes,
+      {
+        class: `tracked-change insert`, // Add 'tracked-change' class
+      }
+    );
+    return ["insert", finalAttrs, 0];
   },
 
   // Used to convert the mark to plain text when copying
@@ -184,12 +190,17 @@ export const DeletionMark = Mark.create({
     ];
   },
 
+  // In InsertionMark and DeletionMark
   renderHTML({ HTMLAttributes }) {
-    return [
-      "delete",
-      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
-      0,
-    ];
+    // Add a common class plus specific class if needed
+    const finalAttrs = mergeAttributes(
+      this.options.HTMLAttributes,
+      HTMLAttributes,
+      {
+        class: `tracked-change delete`, // Add 'tracked-change' class
+      }
+    );
+    return ["delete", finalAttrs, 0];
   },
 
   // Used to convert the mark to plain text when copying
@@ -336,9 +347,8 @@ const changeTrack = (
     // Set metadata to indicate this is a manual track change operation
     currentTr.setMeta("trackManualChanged", true);
 
-    // Apply transaction and update editor state
-    const newState = param.editor.state.apply(currentTr);
-    param.editor.view.updateState(newState);
+    currentTr.setMeta("track-change-update", true);
+    param.editor.view.dispatch(currentTr);
   }
 
   return false;
@@ -509,29 +519,6 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       return DecorationSet.create(doc, decos);
     };
 
-    // Plugin for rendering decorations
-    const decorationPlugin = new Plugin({
-      key: new PluginKey("track-change-decorations"),
-      state: {
-        init(_, { doc }) {
-          const marks = getMarksBetween(0, doc.content.size, doc);
-          return createChangeDecorations(doc, marks);
-        },
-        apply(tr, old) {
-          if (tr.docChanged || tr.getMeta("track-change-update")) {
-            const marks = getMarksBetween(0, tr.doc.content.size, tr.doc);
-            return createChangeDecorations(tr.doc, marks);
-          }
-          return old;
-        },
-      },
-      props: {
-        decorations(state) {
-          return this.getState(state);
-        },
-      },
-    });
-
     // Plugin for handling IME input
     const imePlugin = new Plugin({
       key: new PluginKey("composing-check"),
@@ -551,7 +538,7 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       },
     });
 
-    return [decorationPlugin, imePlugin];
+    return [imePlugin];
   },
 
   onTransaction: ({ editor, transaction }) => {

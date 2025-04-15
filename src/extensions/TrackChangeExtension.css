@@ -1,0 +1,50 @@
+/* Base styling for the marks themselves */
+insert.tracked-change {
+    background-color: #ccffcc;
+    text-decoration: none;
+    /* Override browser default if needed */
+}
+
+delete.tracked-change {
+    background-color: #ffcccc;
+    text-decoration: line-through;
+}
+
+/* Common styling for the hover effect */
+.tracked-change {
+    position: relative;
+    /* Crucial for positioning pseudo-elements */
+    cursor: pointer;
+    /* Indicate interactivity */
+}
+
+/* Style the pseudo-element(s) as buttons */
+.tracked-change::after {
+    /* Use ::before for reject? */
+    content: '✔ ✖';
+    /* Simplistic text buttons, better to use background-image SVGs */
+    position: absolute;
+    /* Positioning (adjust as needed): */
+    top: -1.8em;
+    right: 0;
+    /* Appearance: */
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 2px 5px;
+    font-size: 0.8em;
+    white-space: nowrap;
+    z-index: 10;
+    /* Initially hidden: */
+    opacity: 0;
+    pointer-events: none;
+    /* Don't interfere with mouse initially */
+    transition: opacity 0.15s ease-in-out;
+}
+
+/* Show on hover of the actual mark */
+.tracked-change:hover::after {
+    opacity: 1;
+    pointer-events: auto;
+    /* Allow interaction (though clicks are tricky) */
+}
