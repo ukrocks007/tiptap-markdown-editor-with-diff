@@ -137,7 +137,6 @@ export const InsertionMark = Mark.create({
     ];
   },
 
-  // In InsertionMark and DeletionMark
   renderHTML({ HTMLAttributes }) {
     // Add a common class plus specific class if needed
     const finalAttrs = mergeAttributes(
@@ -190,7 +189,6 @@ export const DeletionMark = Mark.create({
     ];
   },
 
-  // In InsertionMark and DeletionMark
   renderHTML({ HTMLAttributes }) {
     // Add a common class plus specific class if needed
     const finalAttrs = mergeAttributes(
@@ -439,28 +437,44 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
   },
 
   addProseMirrorPlugins() {
-    // Create decorations for track change UI elements
+    let floatingButtons: HTMLElement | null = null;
+    let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+    let lastFloatingId: string | null = null;
+
     const createChangeDecorations = (doc: any, marks: MarkRange[]) => {
       const decos: any[] = [];
-
       marks.forEach((markRange) => {
         const isInsertMark = markRange.mark.type.name === MARK_INSERTION;
         const isDeleteMark = markRange.mark.type.name === MARK_DELETION;
-
         if (isInsertMark || isDeleteMark) {
           const actionButtons = document.createElement("div");
           actionButtons.className = "track-change-action-buttons";
+          actionButtons.setAttribute("data-track-change-id", `change-${markRange.from}-${markRange.to}`);
+          actionButtons.style.display = "none"; // Always hidden until JS shows it
 
           // Accept button
           const acceptButton = document.createElement("button");
           acceptButton.className = "track-change-action-button accept";
           acceptButton.setAttribute("title", "Accept change");
           acceptButton.setAttribute("aria-label", "Accept change");
-          acceptButton.setAttribute(
-            "data-mark-range",
-            JSON.stringify(markRange)
-          );
+          acceptButton.setAttribute("data-mark-range", JSON.stringify(markRange));
           acceptButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><polyline points="20 6 9 17 4 12"/></svg>`;
+          // --- ADD: Use mousedown for immediate action ---
+          acceptButton.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            // Find the editor instance and dispatch the accept command
+            const editorView = (window as any).tiptapEditorView || undefined;
+            if (editorView && editorView.editor && editorView.editor.commands) {
+              editorView.editor.commands.acceptChange();
+            } else if (acceptButton.closest('.ProseMirror')) {
+              // Fallback: dispatch command via ProseMirror view if available
+              const pmView = acceptButton.closest('.ProseMirror') as any;
+              if (pmView && pmView.editor && pmView.editor.commands) {
+                pmView.editor.commands.acceptChange();
+              }
+            }
+          });
+          // --- END ADD ---
           actionButtons.appendChild(acceptButton);
 
           // Reject button
@@ -468,65 +482,117 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
           rejectButton.className = "track-change-action-button reject";
           rejectButton.setAttribute("title", "Reject change");
           rejectButton.setAttribute("aria-label", "Reject change");
-          rejectButton.setAttribute(
-            "data-mark-range",
-            JSON.stringify(markRange)
-          );
+          rejectButton.setAttribute("data-mark-range", JSON.stringify(markRange));
           rejectButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-ccw"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+          // --- ADD: Use mousedown for immediate action ---
+          rejectButton.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            const editorView = (window as any).tiptapEditorView || undefined;
+            if (editorView && editorView.editor && editorView.editor.commands) {
+              editorView.editor.commands.rejectChange();
+            } else if (rejectButton.closest('.ProseMirror')) {
+              const pmView = rejectButton.closest('.ProseMirror') as any;
+              if (pmView && pmView.editor && pmView.editor.commands) {
+                pmView.editor.commands.rejectChange();
+              }
+            }
+          });
+          // --- END ADD ---
           actionButtons.appendChild(rejectButton);
 
-          // Add hover logic directly to the tag
-          const tagName = isInsertMark ? "insert" : "delete";
-          const tagElement = document.createElement(tagName);
-          tagElement.id = "track-change-button-" + markRange.from + "-" + markRange.to;
-
-          // Append buttons to the tag
-          tagElement.appendChild(actionButtons);
-
-          // Add hover logic
-          tagElement.addEventListener("mouseenter", () => {
-            actionButtons.classList.add("show");
-          });
-          tagElement.addEventListener("mouseleave", () => {
-            actionButtons.classList.remove("show");
-          });
-
-          const deco = Decoration.widget(markRange.to, tagElement, {
+          const widgetDeco = Decoration.widget(markRange.to, actionButtons, {
             side: 1,
-            key: `change-actions-${markRange.from}-${markRange.to}`,
+            key: `change-${markRange.from}-${markRange.to}`,
             stopEvent: (event) => {
-              // Stop event propagation for button clicks
-              if (
-                (event.target as HTMLElement)?.closest(
-                  ".track-change-action-button"
-                )
-              ) {
+              if ((event.target as HTMLElement)?.closest(".track-change-action-button")) {
                 return true;
               }
               return false;
             },
           });
 
-          // const inlineDeco = Decoration.inline(markRange.from, markRange.to, {
-          //   class: "track-change-action-inline",
-          //   nodeName: "span",
-          //   style: "position: relative; display: inline-block;",
-          // }, {
-          //   inclusiveEnd: true,
-          //   inclusiveStart: true,
-          //   key: `change-actions-inline-${markRange.from}-${markRange.to}`,
-          // });
+          const inlineDeco = Decoration.inline(
+            markRange.from,
+            markRange.to,
+            {
+              class: `track-change-inline ${isInsertMark ? "insert" : "delete"}-mark`,
+              nodeName: "span",
+              "data-track-change-id": `change-${markRange.from}-${markRange.to}`,
+            },
+            {
+              inclusiveEnd: true,
+              inclusiveStart: true,
+              key: `change-inline-${markRange.from}-${markRange.to}`,
+            }
+          );
 
-          // decos.push(inlineDeco);
-          decos.push(deco);
+          decos.push(inlineDeco, widgetDeco);
         }
       });
-
       return DecorationSet.create(doc, decos);
     };
 
-     // Plugin for rendering decorations
-     const decorationPlugin = new Plugin({
+    const showFloatingButtons = (buttonsContainer: HTMLElement, event: MouseEvent) => {
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+        hideTimeout = null;
+      }
+      const floatingId = buttonsContainer.getAttribute("data-track-change-id");
+      // Only reposition if not already visible for this mark
+      if (
+        !floatingButtons ||
+        floatingButtons !== buttonsContainer ||
+        lastFloatingId !== floatingId ||
+        buttonsContainer.style.display === "none"
+      ) {
+        if (!buttonsContainer.isConnected || buttonsContainer.parentNode !== document.body) {
+          document.body.appendChild(buttonsContainer);
+        }
+        buttonsContainer.style.position = "fixed";
+        buttonsContainer.style.left = `${event.clientX + 8}px`;
+        buttonsContainer.style.top = `${event.clientY + 8}px`;
+        buttonsContainer.style.display = "flex";
+        buttonsContainer.style.zIndex = "1000";
+        floatingButtons = buttonsContainer;
+        lastFloatingId = floatingId || null;
+      }
+      // Add listeners only once
+      if (!(buttonsContainer as any)._trackChangeListenersAdded) {
+        buttonsContainer.addEventListener("mouseenter", () => {
+          if (hideTimeout) {
+            clearTimeout(hideTimeout);
+            hideTimeout = null;
+          }
+        });
+        buttonsContainer.addEventListener("mouseleave", () => {
+          hideFloatingButtons(100);
+        });
+        (buttonsContainer as any)._trackChangeListenersAdded = true;
+      }
+    };
+
+    const hideFloatingButtons = (delay = 0) => {
+      if (hideTimeout) clearTimeout(hideTimeout);
+      if (!floatingButtons) return;
+      const doHide = () => {
+        if (floatingButtons) {
+          floatingButtons.style.display = "none";
+          if (floatingButtons.parentNode === document.body) {
+            document.body.removeChild(floatingButtons);
+          }
+          floatingButtons = null;
+          lastFloatingId = null;
+        }
+        hideTimeout = null;
+      };
+      if (delay > 0) {
+        hideTimeout = setTimeout(doHide, delay);
+      } else {
+        doHide();
+      }
+    };
+
+    const decorationPlugin = new Plugin({
       key: new PluginKey("track-change-decorations"),
       state: {
         init(_, { doc }) {
@@ -545,6 +611,39 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
         decorations(state) {
           return this.getState(state);
         },
+        handleDOMEvents: {
+          mouseover(view, event) {
+            const target = event.target as HTMLElement;
+            const trackChangeSpan = target.closest('[data-track-change-id]');
+            if (trackChangeSpan) {
+              const trackChangeId = trackChangeSpan.getAttribute('data-track-change-id');
+              const buttonsContainer = view.dom.querySelector(
+                `.track-change-action-buttons[data-track-change-id="${trackChangeId}"]`
+              ) as HTMLElement | null;
+              if (buttonsContainer) {
+                // Only show and position if not already visible for this mark
+                showFloatingButtons(buttonsContainer, event as MouseEvent);
+              }
+            }
+            return false;
+          },
+          mouseout(view, event) {
+            const target = event.target as HTMLElement;
+            const trackChangeSpan = target.closest('[data-track-change-id]');
+            if (trackChangeSpan && floatingButtons) {
+              const relatedTarget = event.relatedTarget as HTMLElement;
+              if (relatedTarget && relatedTarget.closest('.track-change-action-buttons')) {
+                return false;
+              }
+              hideFloatingButtons(100);
+            }
+            return false;
+          },
+          blur() {
+            hideFloatingButtons(0);
+            return false;
+          }
+        }
       },
     });
 
@@ -552,7 +651,6 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
   },
 
   onTransaction: ({ editor, transaction }) => {
-
     // Skip if no document changes
     if (!transaction.docChanged) {
       return;

@@ -1,50 +1,49 @@
-/* Base styling for the marks themselves */
-insert.tracked-change {
-    background-color: #ccffcc;
-    text-decoration: none;
-    /* Override browser default if needed */
+.track-change-inline {
+    position: relative;
 }
 
-delete.tracked-change {
-    background-color: #ffcccc;
+.track-change-inline.insert-mark {
+    background-color: rgba(0, 255, 0, 0.1);
+    text-decoration: none;
+}
+
+.track-change-inline.delete-mark {
+    background-color: rgba(255, 0, 0, 0.1);
     text-decoration: line-through;
 }
 
-/* Common styling for the hover effect */
-.tracked-change {
-    position: relative;
-    /* Crucial for positioning pseudo-elements */
-    cursor: pointer;
-    /* Indicate interactivity */
-}
-
-/* Style the pseudo-element(s) as buttons */
-.tracked-change::after {
-    /* Use ::before for reject? */
-    content: '✔ ✖';
-    /* Simplistic text buttons, better to use background-image SVGs */
-    position: absolute;
-    /* Positioning (adjust as needed): */
-    top: -1.8em;
-    right: 0;
-    /* Appearance: */
-    background-color: white;
+.track-change-action-buttons {
+    background: white;
     border: 1px solid #ccc;
-    border-radius: 3px;
-    padding: 2px 5px;
-    font-size: 0.8em;
-    white-space: nowrap;
-    z-index: 10;
-    /* Initially hidden: */
-    opacity: 0;
-    pointer-events: none;
-    /* Don't interfere with mouse initially */
-    transition: opacity 0.15s ease-in-out;
+    border-radius: 4px;
+    padding: 2px;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Show on hover of the actual mark */
-.tracked-change:hover::after {
-    opacity: 1;
-    pointer-events: auto;
-    /* Allow interaction (though clicks are tricky) */
+/* Remove .show class, JS sets display directly */
+
+.track-change-action-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    margin: 0 2px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.track-change-action-button:hover {
+    background-color: #f0f0f0;
+}
+
+.track-change-action-button.accept {
+    color: green;
+}
+
+.track-change-action-button.reject {
+    color: red;
 }
