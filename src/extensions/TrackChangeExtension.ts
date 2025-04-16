@@ -870,7 +870,8 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
       trackChangeEnabled &&
       sel instanceof TextSelection &&
       sel.empty &&
-      sel.from === sel.to;
+      sel.from === sel.to &&
+      !hasAddAndDelete;
     if (isBackwardDelete && allSteps.length > 0) {
       // Find the last ReplaceStep that deleted content
       const lastDelStep = allSteps.reverse().find(
