@@ -87,6 +87,42 @@ const BlogEditor = () => {
     }
   }
 
+  // Randomly change a line or a few words in the editor content
+  const randomEdit = () => {
+    if (!editor) return;
+    const content = editor.storage.markdown.getMarkdown();
+    const lines = content.split('\n');
+    if (lines.length === 0) return;
+
+    // Pick a random line
+    const lineIdx = Math.floor(Math.random() * lines.length);
+    let line = lines[lineIdx];
+
+    // 50% chance to replace whole line, 50% to replace a few words
+    if (Math.random() < 0.5 || line.trim() === "") {
+      // Replace the whole line with random text
+      const randomTexts = [
+        "This is a random update.",
+        "Lorem ipsum dolor sit amet.",
+        "Randomly changed line!",
+        "Another random edit here.",
+        "Updated by random edit button."
+      ];
+      line = randomTexts[Math.floor(Math.random() * randomTexts.length)];
+    } else {
+      // Replace a few words in the line
+      const words = line.split(' ');
+      if (words.length > 0) {
+        const wordIdx = Math.floor(Math.random() * words.length);
+        words[wordIdx] = "✨random✨";
+        line = words.join(' ');
+      }
+    }
+    lines[lineIdx] = line;
+    const newContent = lines.join('\n');
+    editor.commands.setContent(newContent, false); // false = don't emit new history event
+  };
+
   if (!editor) {
     return null
   }
@@ -138,6 +174,7 @@ const BlogEditor = () => {
         >
           Blockquote
         </button>
+        <button onClick={randomEdit}>Random Edit</button>
       </div>
       <EditorContent editor={editor} />
       {hasChanges && (
