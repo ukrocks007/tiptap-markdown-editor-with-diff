@@ -1,54 +1,79 @@
-# React + TypeScript + Vite
+# TipTap Markdown Editor with Diff & Track Changes
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern Markdown blog editor built with [React](https://react.dev/), [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/), and [TipTap](https://tiptap.dev/).  
+It features real-time Markdown editing, GitHub-style diff view, and robust track changes (accept/reject) support.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Markdown Editing:** Live editing with TipTap and Markdown serialization.
+- **Diff View:** See changes between current and last saved version, with GitHub-style highlights.
+- **Track Changes:** Accept/reject insertions and deletions, with inline controls.
+- **Rich Content:** Supports images, links, code blocks, lists, blockquotes, and more.
+- **User Attribution:** Track changes by user (configurable).
+- **Responsive UI:** Clean, modern, and mobile-friendly.
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- [Node.js](https://nodejs.org/) (v18+ recommended)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+
+### Installation
+
+```bash
+git clone https://github.com/your-username/tiptap-markdown-editor-with-diff.git
+cd tiptap-markdown-editor-with-diff
+npm install
+# or
+yarn install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Local Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Start the development server:
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+```bash
+npm run dev
+# or
+yarn dev
 ```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build for Production
+
+```bash
+npm run build
+# or
+yarn build
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+# or
+yarn preview
+```
+
+## Project Structure
+
+- `src/components/BlogEditor.tsx` — Main editor component.
+- `src/components/DiffView.tsx` — Markdown diff viewer.
+- `src/components/TrackChangesView.tsx` — Track changes controls.
+- `src/extensions/TrackChangeExtension.ts` — TipTap extension for track changes.
+- `src/components/*.css` — Component styles.
+
+## Customization
+
+- **User Info:** Update `dataOpUserId` and `dataOpUserNickname` in `BlogEditor.tsx` to integrate with your auth system.
+- **Styling:** Modify CSS files in `src/components/` and `src/extensions/` for custom themes.
+
+## License
+
+MIT
+
+---
+
+> Built with [Vite](https://vitejs.dev/) + [React](https://react.dev/) + [TipTap](https://tiptap.dev/).
