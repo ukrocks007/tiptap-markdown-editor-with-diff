@@ -537,6 +537,17 @@ export const TrackChangeExtension = Extension.create<TrackChangeOptions>({
         clearTimeout(hideTimeout);
         hideTimeout = null;
       }
+      // --- Hide all other floating buttons before showing new one ---
+      document.querySelectorAll('.track-change-action-buttons').forEach((el) => {
+        if (el !== buttonsContainer && el instanceof HTMLElement) {
+          el.style.display = "none";
+          if (el.parentNode === document.body) {
+            document.body.removeChild(el);
+          }
+        }
+      });
+      // --- End hide all others ---
+
       const floatingId = buttonsContainer.getAttribute("data-track-change-id");
       // Only reposition if not already visible for this mark
       if (
