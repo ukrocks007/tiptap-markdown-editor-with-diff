@@ -6,8 +6,11 @@ import Placeholder from '@tiptap/extension-placeholder'
 import { Markdown } from 'tiptap-markdown' // Import Markdown extension
 import { useState, useEffect } from 'react'
 import DiffView from './DiffView'; // Import the DiffView component
+
 import TrackChangeExtension from '../extensions/TrackChangeExtension' // Import our TrackChangeExtension
 import TrackChangesView from './TrackChangesView' // Import the TrackChangesView component
+import { TemporaryHighlightExtension } from '../extensions/TemporaryHighlightExtension';
+import Highlight from '../extensions/Highlight';
 
 import './BlogEditor.css'
 
@@ -37,6 +40,8 @@ const BlogEditor = () => {
       Markdown.configure({ // Add Markdown extension
         html: false, // Disable HTML parsing if you want strict Markdown
       }),
+      Highlight,
+      TemporaryHighlightExtension,
       TrackChangeExtension.configure({
         enabled: trackingEnabled,
         onStatusChange: (status: boolean) => setTrackingEnabled(status),
@@ -123,6 +128,12 @@ const BlogEditor = () => {
     editor.commands.setContent(newContent, false); // false = don't emit new history event
   };
 
+
+  // State for highlight command UI
+  const [highlightStart, setHighlightStart] = useState(1);
+  const [highlightEnd, setHighlightEnd] = useState(1);
+  const [highlightColor, setHighlightColor] = useState('#ffff00');
+
   if (!editor) {
     return null
   }
@@ -175,6 +186,47 @@ const BlogEditor = () => {
           Blockquote
         </button>
         <button onClick={randomEdit}>Random Edit</button>
+        {/* Highlight lines UI */}
+        <div style={{ display: 'inline-block', marginLeft: 16 }}>
+          <input
+            type="number"
+            min={1}
+            value={highlightStart}
+            onChange={e => setHighlightStart(Number(e.target.value))}
+            style={{ width: 50 }}
+            placeholder="Start"
+            title="Start Line"
+          />
+          <input
+            type="number"
+            min={highlightStart}
+            value={highlightEnd}
+            onChange={e => setHighlightEnd(Number(e.target.value))}
+            style={{ width: 50, marginLeft: 4 }}
+            placeholder="End"
+            title="End Line"
+          />
+          <input
+            type="color"
+            value={highlightColor}
+            onChange={e => setHighlightColor(e.target.value)}
+            style={{ marginLeft: 4 }}
+            title="Highlight Color"
+          />
+          <button
+            style={{ marginLeft: 4 }}
+            onClick={() => {
+              debugger;
+              editor.commands.highlightLines({
+                startLine: highlightStart,
+                endLine: highlightEnd,
+                color: highlightColor,
+              });
+            }}
+          >
+            Highlight Lines
+          </button>
+        </div>
       </div>
       <EditorContent editor={editor} />
       {hasChanges && (
